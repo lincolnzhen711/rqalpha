@@ -328,3 +328,38 @@ def generate_account_type_dict():
 
 def is_valid_price(price):
     return not np.isnan(price) and price > 0
+
+
+def import_from_file(module, file):
+    if six.PY3:
+        from importlib.machinery import SourceFileLoader
+        return SourceFileLoader(module, file).load_module()
+    else:
+        import importlib
+        return importlib.load_source('module.name', '/path/to/file.py')
+
+
+@contextmanager
+def create_base_scope():
+    import os
+    import sys
+    from tempfile import TemporaryDirectory
+
+    from .logger import user_print, user_log, std_log
+
+    with TemporaryDirectory() as temp_dir:
+        user_module_path = os.path.join(temp_dir, "user_module.py")
+        open(user_module_path, 'a').close()
+
+        user_module_name = "{}__user_module".format(os.path.split(temp_dir)[1])
+        user_module = import_from_file(user_module_name, user_module_path)
+
+        scope = user_module.__dict__
+        scope.update({
+            "logger": user_log,
+            "print": user_print,
+        })
+
+        yield scope
+
+

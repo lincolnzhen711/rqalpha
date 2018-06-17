@@ -47,7 +47,7 @@ from rqalpha.mod import ModHandler
 from rqalpha.model.bar import BarMap
 from rqalpha.model.portfolio import Portfolio
 from rqalpha.model.base_position import Positions
-from rqalpha.utils import create_custom_exception, run_with_user_log_disabled, scheduler as mod_scheduler
+from rqalpha.utils import create_custom_exception, run_with_user_log_disabled, create_base_scope, scheduler as mod_scheduler
 from rqalpha.utils.exception import CustomException, is_user_exc, patch_user_exc
 from rqalpha.utils.i18n import gettext as _
 from rqalpha.utils.persisit_helper import CoreObjectsPersistProxy, PersistHelper
@@ -112,20 +112,6 @@ def create_benchmark_portfolio(env):
         const.DEFAULT_ACCOUNT_TYPE.BENCHMARK.name: BenchmarkAccount(total_cash, Positions(BenchmarkPosition))
     }
     return Portfolio(start_date, 1, total_cash, accounts)
-
-
-def create_base_scope():
-    import copy
-    from rqalpha.utils.logger import user_print, user_log
-
-    from . import user_module
-    scope = copy.copy(user_module.__dict__)
-    scope.update({
-        "logger": user_log,
-        "print": user_print,
-    })
-
-    return scope
 
 
 def update_bundle(data_bundle_path=None, locale="zh_Hans_CN", confirm=True):
@@ -236,70 +222,70 @@ def run(config, source_code=None, user_funcs=None):
 
         env.event_bus.publish_event(Event(EVENT.POST_SYSTEM_INIT))
 
-        scope = create_base_scope()
-        scope.update({
-            "g": env.global_vars
-        })
+        with create_base_scope() as scope:
+            scope.update({
+                "g": env.global_vars
+            })
 
-        apis = api_helper.get_apis()
-        scope.update(apis)
+            apis = api_helper.get_apis()
+            scope.update(apis)
 
-        scope = env.strategy_loader.load(scope)
+            scope = env.strategy_loader.load(scope)
 
-        if env.config.extra.enable_profiler:
-            enable_profiler(env, scope)
+            if env.config.extra.enable_profiler:
+                enable_profiler(env, scope)
 
-        ucontext = StrategyContext()
-        user_strategy = Strategy(env.event_bus, scope, ucontext)
-        scheduler.set_user_context(ucontext)
+            ucontext = StrategyContext()
+            user_strategy = Strategy(env.event_bus, scope, ucontext)
+            scheduler.set_user_context(ucontext)
 
-        if not config.extra.force_run_init_when_pt_resume:
-            with run_with_user_log_disabled(disabled=config.base.resume_mode):
-                user_strategy.init()
+            if not config.extra.force_run_init_when_pt_resume:
+                with run_with_user_log_disabled(disabled=config.base.resume_mode):
+                    user_strategy.init()
 
-        if config.extra.context_vars:
-            for k, v in six.iteritems(config.extra.context_vars):
-                setattr(ucontext, k, v)
+            if config.extra.context_vars:
+                for k, v in six.iteritems(config.extra.context_vars):
+                    setattr(ucontext, k, v)
 
-        if config.base.persist:
-            persist_provider = env.persist_provider
-            if persist_provider is None:
-                raise RuntimeError(_(u"Missing persist provider. You need to set persist_provider before use persist"))
-            persist_helper = PersistHelper(persist_provider, env.event_bus, config.base.persist_mode)
-            persist_helper.register('core', CoreObjectsPersistProxy(scheduler))
-            persist_helper.register('user_context', ucontext)
-            persist_helper.register('global_vars', env.global_vars)
-            persist_helper.register('universe', env._universe)
-            if isinstance(event_source, Persistable):
-                persist_helper.register('event_source', event_source)
-            persist_helper.register('portfolio', env.portfolio)
-            if env.benchmark_portfolio:
-                persist_helper.register('benchmark_portfolio', env.benchmark_portfolio)
-            for name, module in six.iteritems(env.mod_dict):
-                if isinstance(module, Persistable):
-                    persist_helper.register('mod_{}'.format(name), module)
-            # broker will restore open orders from account
-            if isinstance(broker, Persistable):
-                persist_helper.register('broker', broker)
+            if config.base.persist:
+                persist_provider = env.persist_provider
+                if persist_provider is None:
+                    raise RuntimeError(_(u"Missing persist provider. You need to set persist_provider before use persist"))
+                persist_helper = PersistHelper(persist_provider, env.event_bus, config.base.persist_mode)
+                persist_helper.register('core', CoreObjectsPersistProxy(scheduler))
+                persist_helper.register('user_context', ucontext)
+                persist_helper.register('global_vars', env.global_vars)
+                persist_helper.register('universe', env._universe)
+                if isinstance(event_source, Persistable):
+                    persist_helper.register('event_source', event_source)
+                persist_helper.register('portfolio', env.portfolio)
+                if env.benchmark_portfolio:
+                    persist_helper.register('benchmark_portfolio', env.benchmark_portfolio)
+                for name, module in six.iteritems(env.mod_dict):
+                    if isinstance(module, Persistable):
+                        persist_helper.register('mod_{}'.format(name), module)
+                # broker will restore open orders from account
+                if isinstance(broker, Persistable):
+                    persist_helper.register('broker', broker)
 
-            persist_helper.restore()
-            env.event_bus.publish_event(Event(EVENT.POST_SYSTEM_RESTORED))
+                persist_helper.restore()
+                env.event_bus.publish_event(Event(EVENT.POST_SYSTEM_RESTORED))
 
-        init_succeed = True
+            init_succeed = True
 
-        # When force_run_init_when_pt_resume is active,
-        # we should run `init` after restore persist data
-        if config.extra.force_run_init_when_pt_resume:
-            assert config.base.resume_mode == True
-            with run_with_user_log_disabled(disabled=False):
-                env._universe._set = set()
-                user_strategy.init()
+            # When force_run_init_when_pt_resume is active,
+            # we should run `init` after restore persist data
+            if config.extra.force_run_init_when_pt_resume:
+                assert config.base.resume_mode == True
+                with run_with_user_log_disabled(disabled=False):
+                    env._universe._set = set()
+                    user_strategy.init()
 
-        from .core.executor import Executor
-        Executor(env).run(bar_dict)
+            from .core.executor import Executor
+            Executor(env).run(bar_dict)
 
-        if env.profile_deco:
-            output_profile_result(env)
+            if env.profile_deco:
+                output_profile_result(env)
     except CustomException as e:
         if init_succeed and env.config.base.persist and persist_helper:
             persist_helper.persist()
