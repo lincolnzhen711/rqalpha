@@ -69,3 +69,18 @@ try:
     from inspect import signature
 except ImportError:
     from funcsigs import signature
+
+
+try:
+    from tempfile import TemporaryDirectory
+except ImportError:
+    from backports.tempfile import TemporaryDirectory
+
+
+def import_from_file(module, file):
+    if six.PY3:
+        from importlib.machinery import SourceFileLoader
+        return SourceFileLoader(module, file).load_module()
+    else:
+        import imp
+        return imp.load_source(module, file)

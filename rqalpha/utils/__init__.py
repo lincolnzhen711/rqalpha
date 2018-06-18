@@ -330,21 +330,12 @@ def is_valid_price(price):
     return not np.isnan(price) and price > 0
 
 
-def import_from_file(module, file):
-    if six.PY3:
-        from importlib.machinery import SourceFileLoader
-        return SourceFileLoader(module, file).load_module()
-    else:
-        import importlib
-        return importlib.load_source('module.name', '/path/to/file.py')
-
-
 @contextmanager
 def create_base_scope():
     import os
     import sys
-    from tempfile import TemporaryDirectory
 
+    from .py2 import TemporaryDirectory, import_from_file
     from .logger import user_print, user_log, std_log
 
     with TemporaryDirectory() as temp_dir:
