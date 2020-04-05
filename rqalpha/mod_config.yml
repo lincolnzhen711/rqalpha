@@ -9,7 +9,7 @@ mod:
     enabled: true
   # 开启该选项，可以在命令行查看回测进度
   sys_progress:
-    enabled: true
+    enabled: false
   sys_risk:
     enabled: true
   sys_analyser:

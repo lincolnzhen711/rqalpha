@@ -7,15 +7,15 @@ whitelist: [base, extra, validator, mod]
 
 base:
   # 数据源所存储的文件路径
-  data_bundle_path: ~
+  data_bundle_path: C:\Users\kysec\.rqalpha\bundle
   # 启动的策略文件路径
-  strategy_file: strategy.py
+  strategy_file: .\examples\buy_and_hold.py
   # 策略源代码
   source_code: ~
   # 回测起始日期
   start_date: 2015-06-01
   # 回测结束日期(如果是实盘，则忽略该配置)
-  end_date: 2050-01-01
+  end_date: 2016-01-01
   # 设置保证金乘数，默认为1
   margin_multiplier: 1
   # 运行类型，`b` 为回测，`p` 为模拟交易, `r` 为实盘交易。
@@ -29,7 +29,7 @@ base:
   # 设置策略可交易品种，目前支持 `stock` (股票账户)、`future` (期货账户)，您也可以自行扩展
   accounts:
     # 如果想设置使用某个账户，只需要增加对应的初始资金即可
-    stock: ~
+    stock: 10000000
     future: ~
   # 交易市场，如 cn 中国市场，hk 香港市场
   market: cn
@@ -39,7 +39,7 @@ base:
   round_price: false
   # 用户自定义的期货合约数据，用于设置期货手续菲费率
   future_info: {}
-
+  output-file: .test.pkl
 
 extra:
   # 选择日期的输出等级，有 `verbose` | `info` | `warning` | `error` 等选项，您可以通过设置 `verbose` 来查看最详细的日志，
@@ -50,7 +50,7 @@ extra:
   # 通过该参数可以将预定义变量传入 `context` 内。
   context_vars: ~
   # enable_profiler: 是否启动性能分析
-  enable_profiler: false
+  enable_profiler: true
   is_hold: false
   locale: zh_Hans_CN
   logger: []
@@ -58,3 +58,8 @@ extra:
 validator:
   # close_amount: 在执行order_value操作时，进行实际下单数量的校验和scale，默认开启
   close_amount: true
+
+mod:
+  sys_analyser:
+    enabled: True
+    plot: False
