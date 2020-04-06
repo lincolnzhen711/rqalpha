@@ -1,3 +1,4 @@
+talib
 requests
 numpy >=1.11.1; python_version >= '3.4'
 numpy >=1.11.1,<=1.16.4; python_version == '2.7'
