@@ -7,6 +7,7 @@ config = {
     "benchmark": None,
     "accounts": {
         "future": 10000000,
+        "stock": None
     }
   },
   "extra": {
@@ -27,7 +28,7 @@ config = {
     },
     "sys_simulation": {
       "enabled": True,
-      "slippage": 0.01
+      "slippage": 0.00025
     }
   }
 }
