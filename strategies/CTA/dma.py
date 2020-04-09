@@ -23,7 +23,8 @@ def init(context):
     context.SHORTPERIOD = 20
     context.LONGPERIOD = 120
 
-    context.dropdown_value = -0.01
+    context.dropdown_value_lv1 = -0.01
+    context.dropdown_value_lv2 = -0.03
     context.dropdown_count = 0
     context.start_net_value = context.portfolio.total_value
 
@@ -81,20 +82,27 @@ def stop_loss(context, bar_dict):
     for item in context.rolling_future:
         long_position = context.portfolio.future_account.positions[context.rolling_future[i]].buy_quantity
         short_position = context.portfolio.future_account.positions[context.rolling_future[i]].sell_quantity
-        if (long_position > 0 and (bar_dict[item].close/bar_dict[item].prev_close -1 < context.dropdown_value)) \
-                or (short_position > 0 and (bar_dict[item].close/bar_dict[item].prev_close -1 > -context.dropdown_value)):
+        close_change_percent = bar_dict[item].close/bar_dict[item].prev_close - 1
+        if (long_position > 0 and (close_change_percent < context.dropdown_value_lv1)) \
+                or (short_position > 0 and (close_change_percent > -context.dropdown_value_lv1)):
             if context.change_signal:
                 # print('进入换月函数,新的主力合约为：{}'.format(context.close_symbol))
                 change_dominant(context, bar_dict, False)
                 context.change_signal = False
-                context.dropdown_count = 2
+                if abs(close_change_percent) > abs(context.dropdown_value_lv2):
+                    context.dropdown_count = 4
+                elif abs(close_change_percent) > abs(context.dropdown_value_lv1):
+                    context.dropdown_count = 2
                 return True
             if long_position > 0:
                 sell_close(item, long_position, style=LimitOrder(bar_dict[item].close))
             if short_position > 0:
                 buy_close(item, short_position, style=LimitOrder(bar_dict[item].close))
             i += 1
-            context.dropdown_count = 2
+            if abs(close_change_percent) > abs(context.dropdown_value_lv2):
+                context.dropdown_count = 4
+            elif abs(close_change_percent) > abs(context.dropdown_value_lv1):
+                context.dropdown_count = 2
             return True
     return False
 
